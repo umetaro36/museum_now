@@ -2,9 +2,9 @@ import requests
 from bs4 import BeautifulSoup
 import re
 
-BASE_URL = "https://www.nact.jp/"
+BASE_URL = "https://www.momat.go.jp/exhibitions"
 
-def get_nact_exhibitions():
+def get_momat_exhibitions():
     url = BASE_URL
     res = requests.get(url)
     res.encoding = res.apparent_encoding
@@ -12,35 +12,40 @@ def get_nact_exhibitions():
 
     exhibitions = []
 
-    # 「展覧会」セクション内のスライドを取得
-    slides = soup.select("li.splide__slide")
-    for slide in slides:
-        # ステータスカテゴリを取得（例：開催中、企画展、公募展など）
-        status_tags = slide.select("ul.ex_cate li")
-        statuses = [tag.get_text(strip=True) for tag in status_tags]
-
-        # 公募展などの除外と、開催中かつ展覧会（企画展など）のみを対象
-        if "開催中" not in statuses:
+    # 開催中の展覧会セクションを取得
+    current_exhibitions = soup.select("section.item")
+    
+    for exb_item in current_exhibitions:
+        # 開催中かどうかを確認
+        status_tag = exb_item.find("span", class_="status")
+        if not status_tag or "開催中" not in status_tag.get_text(strip=True):
             continue
-        if not any(s in statuses for s in ["企画展", "展覧会"]):
+
+        # 企画展かどうかを確認
+        type_tag = exb_item.find("span", class_="type")
+        if not type_tag or "企画展" not in type_tag.get_text(strip=True):
             continue
 
         exb = {}
 
         # タイトル
-        title_tag = slide.find("h2")
+        title_tag = exb_item.find("h3", class_="title")
         if title_tag:
             exb["title"] = title_tag.get_text(strip=True)
 
         # 会期
-        date_tag = slide.find("p", class_="ex_date")
+        date_tag = exb_item.find("time", class_="date")
         if date_tag:
             exb["date"] = date_tag.get_text(strip=True)
 
+        # 展覧会タイプ
+        if type_tag:
+            exb["type"] = type_tag.get_text(strip=True)
+
         # 詳細ページURL
-        a_tag = slide.find("a")
+        a_tag = exb_item.find("a")
         if a_tag and "href" in a_tag.attrs:
-            detail_url = BASE_URL.rstrip("/") + "/" + a_tag["href"].lstrip("/")
+            detail_url = a_tag["href"]
             exb["detail_url"] = detail_url
 
             # 詳細ページから料金取得
@@ -75,14 +80,15 @@ def get_nact_exhibitions():
     return exhibitions
 
 if __name__ == "__main__":
-    exhibitions = get_nact_exhibitions()
+    exhibitions = get_momat_exhibitions()
     if not exhibitions:
-        print("現在会期中の展覧会はありません。")
+        print("現在会期中の企画展はありません。")
     else:
         for idx, exb in enumerate(exhibitions, 1):
             print(f"\n◉ 企画展 {idx}")
             print(f"　タイトル: {exb.get('title')}")
             print(f"　会期: {exb.get('date')}")
+            print(f"　種類: {exb.get('type', '情報なし')}")
             print(f"　大人料金: {exb.get('adult_fee', '情報なし')}")
             print(f"　前売り大人料金: {exb.get('pre_sale_adult_fee', '情報なし')}")
             print(f"　詳細ページ: {exb.get('detail_url')}")
