@@ -72,7 +72,7 @@ def get_tnm_special_exhibitions():
 if __name__ == "__main__":
     exhibitions = get_tnm_special_exhibitions()
     for idx, exb in enumerate(exhibitions, 1):
-        print(f"\n◉ 特別展 {idx}")
+        print(f"\n◉ 企画展 {idx}")
         print(f"　タイトル: {exb.get('title')}")
         print(f"　会期: {exb.get('date')}")
         print(f"　大人料金: {exb.get('adult_fee', '情報なし')}")
